@@ -1,0 +1,9 @@
+{
+  "name": "mynote-frontend-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix projects2 run dev",
+    "build": "npm --prefix projects2 run build",
+    "preview": "npm --prefix projects2 run preview"
+  }
+}
