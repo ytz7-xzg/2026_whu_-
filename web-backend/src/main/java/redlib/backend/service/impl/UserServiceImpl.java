@@ -38,6 +38,9 @@ public class UserServiceImpl implements UserService {
      * 2. 用户名去首尾空格
      * 3. 按用户名查询数据库，检查是否重复
      * 4. 若不重复，则保存到数据库
+     *
+     * 检验:
+     * 用户信息，用户名，密码不为空
      */
     @Override
     public void register(User user) {
@@ -48,11 +51,13 @@ public class UserServiceImpl implements UserService {
         Assert.hasText(user.getPassword(), "密码不能为空");
 
         User existUser = userMapper.selectByUsername(username);
+        //用户名已经被占用了
         if (existUser != null) {
             throw new RuntimeException("用户名已存在，请更换后重试");
         }
 
         user.setUsername(username);
+        //注册，用户表插入数据
         userMapper.insert(user);
     }
 

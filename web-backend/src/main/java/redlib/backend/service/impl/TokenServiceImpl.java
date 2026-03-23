@@ -21,9 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * 3. 退出登录
  * 4. 强制下线
  *
- * 注意：
- * - 当前项目把 token 存在内存中，而不是 Redis 或数据库
- * - 所以后端服务一重启，所有登录态都会丢失
  */
 @Service
 public class TokenServiceImpl implements TokenService {
