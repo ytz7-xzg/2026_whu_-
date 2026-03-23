@@ -1,6 +1,5 @@
 import Footer from '@/components/Footer';
 import RightContent from '@/components/RightContent';
-import { LinkOutlined } from '@ant-design/icons';
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { SettingDrawer } from '@ant-design/pro-components';
 import type { RunTimeLayoutConfig } from '@umijs/max';
@@ -9,7 +8,6 @@ import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
 import { getCurrentUser } from './services/api/authentication';
 
-const isDev = process.env.NODE_ENV === 'development';
 const authPaths = ['/user/login', '/user/register'];
 
 export async function getInitialState(): Promise<{
@@ -101,19 +99,6 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
       width: '331px',
     },
   ],
-  links: isDev
-    ? [
-        <a
-          key="openapi"
-          href="http://localhost:9311/swagger-ui.html"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <LinkOutlined />
-          <span>OpenAPI 文档</span>
-        </a>,
-      ]
-    : [],
   menuHeaderRender: undefined,
   childrenRender: (children) => (
     <>

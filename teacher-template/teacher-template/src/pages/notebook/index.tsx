@@ -102,10 +102,12 @@ const NotebookPage: React.FC = () => {
     if (!name) return;
 
     if (editingCategory) {
-      await updateCategory({ id: editingCategory.id, name });
+      const result = await updateCategory({ id: editingCategory.id, name });
+      if (!result) return;
       message.success('分类已更新');
     } else {
-      await createCategory({ name });
+      const result = await createCategory({ name });
+      if (!result) return;
       message.success('分类已创建');
     }
     setCategoryModalOpen(false);
@@ -157,6 +159,11 @@ const NotebookPage: React.FC = () => {
           </>
         );
       },
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      width: 180,
     },
     {
       title: '更新时间',

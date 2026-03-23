@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Notebook course routes: login + notebook only.
  */
 export default [
@@ -22,6 +22,7 @@ export default [
     path: '/notebook',
     name: 'notebook',
     icon: 'book',
+    hideChildrenInMenu: true,
     routes: [
       {
         path: '/notebook',
