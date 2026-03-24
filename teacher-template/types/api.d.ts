@@ -29,6 +29,11 @@ declare namespace API {
     password: string;
   }
 
+  interface RegisterResult {
+    success: boolean;
+    message?: string;
+  }
+
   interface DepartmentQueryDTO {
     current?: number;
     pageSize?: number;

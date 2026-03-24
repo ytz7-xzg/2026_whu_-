@@ -115,8 +115,8 @@ export default defineConfig({
    * @description 基于 openapi 的规范生成serve 和mock，能减少很多样板代码
    * @doc https://pro.ant.design/zh-cn/docs/openapi/
    */
-  mfsu: {
-    strategy: 'normal',
-  },
+  // Disable MFSU in dev to avoid occasional blank-page issues caused by
+  // stale/forked cache state on Windows mapped drives.
+  mfsu: false,
   requestRecord: {},
 });
