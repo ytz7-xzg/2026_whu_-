@@ -28,15 +28,17 @@ const NotebookEditPage: React.FC = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
+      setInitialValues(undefined);
+
       if (!noteId) {
         setLoading(false);
         return;
       }
-      const [categoryResult, noteDetail] = await Promise.all([
-        listCategories(),
-        getNoteDetail(noteId),
-      ]);
+
+      const [categoryResult, noteDetail] = await Promise.all([listCategories(), getNoteDetail(noteId)]);
       setCategories(categoryResult || []);
+
       if (noteDetail) {
         setInitialValues({
           title: noteDetail.title,
@@ -44,13 +46,16 @@ const NotebookEditPage: React.FC = () => {
           categories: noteDetail.categories || [],
         });
       }
+
       setLoading(false);
     };
+
     void loadData();
   }, [noteId]);
 
   const handleSubmit = async (values: NoteFormValue) => {
     if (!noteId) return false;
+
     setSubmitting(true);
     try {
       const updated = await updateNote({
@@ -59,12 +64,14 @@ const NotebookEditPage: React.FC = () => {
         content: values.content,
         categories: values.categories || [],
       });
+
       if (!updated) {
         message.error('更新失败');
         return false;
       }
+
       message.success('更新成功');
-      history.push('/notebook/index');
+      history.push('/notebook/notes');
       return true;
     } finally {
       setSubmitting(false);
@@ -87,7 +94,7 @@ const NotebookEditPage: React.FC = () => {
           title="未找到该笔记"
           subTitle="该笔记可能已删除或不存在。"
           extra={
-            <Button type="primary" onClick={() => history.push('/notebook/index')}>
+            <Button type="primary" onClick={() => history.push('/notebook/notes')}>
               返回列表
             </Button>
           }
@@ -100,16 +107,13 @@ const NotebookEditPage: React.FC = () => {
     <PageContainer
       title="编辑笔记"
       extra={[
-        <Button
-          key="back"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => history.push('/notebook/index')}
-        >
+        <Button key="back" icon={<ArrowLeftOutlined />} onClick={() => history.push('/notebook/notes')}>
           返回列表
         </Button>,
       ]}
     >
       <ProForm<NoteFormValue>
+        key={noteId}
         layout="vertical"
         submitter={{
           searchConfig: { submitText: '保存修改', resetText: '重置' },

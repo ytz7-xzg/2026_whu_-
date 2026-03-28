@@ -60,16 +60,21 @@ const injectNotebookMenu = (menuData: MenuDataItem[], recentNotes: NotebookRecen
       }))
     : [
         {
-          path: '/notebook/notes',
+          path: '/notebook/recent-empty',
           name: '暂无笔记',
           disabled: true,
         },
       ];
 
-  return menuData.map((menuItem) => {
-    if (menuItem.path !== '/notebook') return menuItem;
+  const output: MenuDataItem[] = [];
 
-    const nextChildren = (menuItem.children || []).map((child) => {
+  menuData.forEach((menuItem) => {
+    if (menuItem.path !== '/notebook') {
+      output.push(menuItem);
+      return;
+    }
+
+    const notebookChildren = (menuItem.children || []).map((child) => {
       if (child.path !== '/notebook/notes') return child;
 
       return {
@@ -84,11 +89,10 @@ const injectNotebookMenu = (menuData: MenuDataItem[], recentNotes: NotebookRecen
       };
     });
 
-    return {
-      ...menuItem,
-      children: nextChildren,
-    };
+    output.push(...notebookChildren);
   });
+
+  return output;
 };
 
 export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => ({
