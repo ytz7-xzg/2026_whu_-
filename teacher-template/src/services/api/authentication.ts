@@ -1,4 +1,4 @@
-﻿import { request } from '@/utils/request';
+import { request } from '@/utils/request';
 
 const AUTH_STORAGE_KEY = 'redlib_backend_auth_v1';
 
@@ -41,15 +41,40 @@ const normalizeToken = (token?: any, fallback?: Partial<API.Token>): API.Token |
   };
 };
 
+const readErrorMessage = (error: any) =>
+  error?.info?.message || error?.message || error?.response?.data?.message;
+
+export async function registerUser(
+  data: API.RegisterPayload,
+  options?: Record<string, unknown>,
+): Promise<API.RegisterResult> {
+  try {
+    const resp = await request<string>('/api/authentication/register', {
+      method: 'POST',
+      data: {
+        username: data.username,
+        password: data.password,
+      },
+      // Let register page handle the message itself.
+      throwError: true,
+      skipErrorHandler: true,
+      ...(options || {}),
+    });
+
+    return {
+      success: true,
+      message: resp || '注册成功',
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: readErrorMessage(error) || '注册失败，请稍后重试',
+    };
+  }
+}
+
 export async function register(data: API.RegisterPayload, options?: Record<string, unknown>) {
-  return request<string>('/api/authentication/register', {
-    method: 'POST',
-    data: {
-      username: data.username,
-      password: data.password,
-    },
-    ...(options || {}),
-  });
+  return registerUser(data, options);
 }
 
 export async function login(data: API.LoginPayload, options?: Record<string, unknown>) {
@@ -102,4 +127,3 @@ export async function logout(options?: Record<string, unknown>) {
   saveToken(undefined);
   return !!remote;
 }
-
