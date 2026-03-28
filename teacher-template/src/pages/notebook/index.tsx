@@ -179,6 +179,11 @@ const NotebookPage: React.FC = () => {
       .map((item) => ({ type: item.categoryName || '未命名分类', value: item.noteCount }));
   }, [stats]);
 
+  const pieTotal = useMemo(
+    () => categoryPieData.reduce((total, item) => total + item.value, 0),
+    [categoryPieData],
+  );
+
   const noteTrendData = useMemo<TrendDatum[]>(() => {
     const days = 14;
     const today = new Date();
@@ -239,10 +244,13 @@ const NotebookPage: React.FC = () => {
         },
       },
       tooltip: {
-        formatter: (datum: ChartDatum) => ({
-          name: datum.type,
-          value: `${datum.value} 篇`,
-        }),
+        formatter: (datum: ChartDatum) => {
+          const percent = pieTotal ? ((datum.value / pieTotal) * 100).toFixed(1) : '0.0';
+          return {
+            name: `类别：${datum.type}`,
+            value: `笔记占比：${percent}%`,
+          };
+        },
       },
       interaction: {
         elementHighlight: true,
@@ -254,7 +262,7 @@ const NotebookPage: React.FC = () => {
         },
       },
     }),
-    [categoryPieData],
+    [categoryPieData, pieTotal],
   );
 
   const lineConfig = useMemo(
@@ -536,7 +544,7 @@ const NotebookPage: React.FC = () => {
               <Text strong style={{ fontSize: 24, color: token.colorTextHeading }}>
                 我的笔记
               </Text>
-              <Text type="secondary">管理全部笔记，支持搜索、筛选、刷新与快速编辑。</Text>
+              <Text type="secondary">在这里记录、查找和整理你的每一条笔记。</Text>
             </Space>
           </ProCard>
 
@@ -604,7 +612,7 @@ const NotebookPage: React.FC = () => {
               <Text strong style={{ fontSize: 24, color: token.colorTextHeading }}>
                 统计
               </Text>
-              <Text type="secondary">先看总览，再看分类占比与趋势，最后查看明细表格。</Text>
+              <Text type="secondary">用更直观的方式看看你的笔记分布、分类占比和近期变化。</Text>
             </Space>
           </ProCard>
 
@@ -681,7 +689,7 @@ const NotebookPage: React.FC = () => {
               <Text strong style={{ fontSize: 24, color: token.colorTextHeading }}>
                 分类管理
               </Text>
-              <Text type="secondary">统一维护笔记分类，支持新增、编辑、删除。</Text>
+              <Text type="secondary">给笔记分个类，让内容整理起来更轻松。</Text>
             </Space>
           </ProCard>
 

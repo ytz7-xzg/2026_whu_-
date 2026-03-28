@@ -1,7 +1,6 @@
 import Footer from '@/components/Footer';
 import RightContent from '@/components/RightContent';
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
-import { SettingDrawer } from '@ant-design/pro-components';
 import type { MenuDataItem } from '@umijs/route-utils';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import { history } from '@umijs/max';
@@ -84,6 +83,11 @@ const injectNotebookMenu = (menuData: MenuDataItem[], recentNotes: NotebookRecen
             path: '/notebook/notes',
             name: '全部笔记',
           },
+          {
+            path: '/notebook/recent-title',
+            name: '最近笔记',
+            disabled: true,
+          },
           ...recentMenus,
         ],
       };
@@ -95,7 +99,7 @@ const injectNotebookMenu = (menuData: MenuDataItem[], recentNotes: NotebookRecen
   return output;
 };
 
-export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => ({
+export const layout: RunTimeLayoutConfig = ({ initialState }) => ({
   token: {
     colorBgAppListIconHover: 'rgba(0,0,0,0.06)',
     colorTextAppListIconHover: 'rgba(255,255,255,0.95)',
@@ -105,19 +109,19 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
       colorTextCollapsedButtonHover: 'rgba(0,0,0,0.65)',
       colorTextCollapsedButton: 'rgba(0,0,0,0.45)',
       colorMenuBackground: '#004FD9',
-      colorBgMenuItemCollapsedHover: 'rgba(0,0,0,0.06)',
-      colorBgMenuItemCollapsedSelected: 'rgba(0,0,0,0.15)',
+      colorBgMenuItemCollapsedHover: 'rgba(255,255,255,0.16)',
+      colorBgMenuItemCollapsedSelected: 'rgba(255,255,255,0.22)',
       colorBgMenuItemCollapsedElevated: 'rgba(0,0,0,0.85)',
-      colorMenuItemDivider: 'rgba(255,255,255,0.15)',
-      colorBgMenuItemHover: 'rgba(0,0,0,0.06)',
-      colorBgMenuItemSelected: 'rgba(0,0,0,0.15)',
-      colorTextMenuSelected: '#fff',
-      colorTextMenuItemHover: 'rgba(255,255,255,0.75)',
-      colorTextMenu: 'rgba(255,255,255,0.75)',
-      colorTextMenuSecondary: 'rgba(255,255,255,0.65)',
-      colorTextMenuTitle: 'rgba(255,255,255,0.95)',
-      colorTextMenuActive: 'rgba(255,255,255,0.95)',
-      colorTextSubMenuSelected: '#fff',
+      colorMenuItemDivider: 'rgba(255,255,255,0.2)',
+      colorBgMenuItemHover: 'rgba(255,255,255,0.12)',
+      colorBgMenuItemSelected: 'rgba(255,255,255,0.2)',
+      colorTextMenuSelected: '#ffffff',
+      colorTextMenuItemHover: 'rgba(255,255,255,0.95)',
+      colorTextMenu: 'rgba(255,255,255,0.9)',
+      colorTextMenuSecondary: 'rgba(255,255,255,0.7)',
+      colorTextMenuTitle: 'rgba(255,255,255,0.98)',
+      colorTextMenuActive: 'rgba(255,255,255,1)',
+      colorTextSubMenuSelected: '#ffffff',
     },
   },
   menuDataRender: (menuData) =>
@@ -154,22 +158,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     },
   ],
   menuHeaderRender: undefined,
-  childrenRender: (children) => (
-    <>
-      {children}
-      <SettingDrawer
-        disableUrlParams
-        enableDarkTheme
-        settings={initialState?.settings}
-        onSettingChange={(settings) => {
-          setInitialState((state) => ({
-            ...state,
-            settings,
-          }));
-        }}
-      />
-    </>
-  ),
+  childrenRender: (children) => <>{children}</>,
   ...initialState?.settings,
 });
 
