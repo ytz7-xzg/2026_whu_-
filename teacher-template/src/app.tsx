@@ -2,6 +2,7 @@ import Footer from '@/components/Footer';
 import RightContent from '@/components/RightContent';
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { SettingDrawer } from '@ant-design/pro-components';
+import type { MenuDataItem } from '@umijs/route-utils';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import { history } from '@umijs/max';
 import defaultSettings from '../config/defaultSettings';
@@ -10,10 +11,16 @@ import { getCurrentUser } from './services/api/authentication';
 
 const authPaths = ['/user/login', '/user/register'];
 
+type NotebookRecentNote = {
+  id: API.ID;
+  title: string;
+};
+
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
   currentToken?: API.Token;
   loading?: boolean;
+  notebookRecentNotes?: NotebookRecentNote[];
   fetchUserInfo?: () => Promise<API.Token | undefined>;
 }> {
   const fetchUserInfo = async () => {
@@ -33,15 +40,56 @@ export async function getInitialState(): Promise<{
     return {
       fetchUserInfo,
       currentToken,
+      notebookRecentNotes: [],
       settings: defaultSettings,
     };
   }
 
   return {
     fetchUserInfo,
+    notebookRecentNotes: [],
     settings: defaultSettings,
   };
 }
+
+const injectNotebookMenu = (menuData: MenuDataItem[], recentNotes: NotebookRecentNote[]) => {
+  const recentMenus: MenuDataItem[] = recentNotes.length
+    ? recentNotes.map((item) => ({
+        path: `/notebook/edit/${item.id}`,
+        name: item.title || '未命名笔记',
+      }))
+    : [
+        {
+          path: '/notebook/notes',
+          name: '暂无笔记',
+          disabled: true,
+        },
+      ];
+
+  return menuData.map((menuItem) => {
+    if (menuItem.path !== '/notebook') return menuItem;
+
+    const nextChildren = (menuItem.children || []).map((child) => {
+      if (child.path !== '/notebook/notes') return child;
+
+      return {
+        ...child,
+        children: [
+          {
+            path: '/notebook/notes',
+            name: '全部笔记',
+          },
+          ...recentMenus,
+        ],
+      };
+    });
+
+    return {
+      ...menuItem,
+      children: nextChildren,
+    };
+  });
+};
 
 export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => ({
   token: {
@@ -68,6 +116,8 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
       colorTextSubMenuSelected: '#fff',
     },
   },
+  menuDataRender: (menuData) =>
+    injectNotebookMenu(menuData, initialState?.notebookRecentNotes || []),
   rightContentRender: () => <RightContent />,
   waterMarkProps: {
     content: initialState?.currentToken?.userName || initialState?.currentToken?.userCode,

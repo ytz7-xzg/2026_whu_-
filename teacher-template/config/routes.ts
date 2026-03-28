@@ -22,15 +22,28 @@ export default [
     path: '/notebook',
     name: 'notebook',
     icon: 'book',
-    hideChildrenInMenu: true,
     routes: [
       {
         path: '/notebook',
-        redirect: '/notebook/index',
+        redirect: '/notebook/notes',
       },
       {
         path: '/notebook/index',
-        name: 'index',
+        redirect: '/notebook/notes',
+      },
+      {
+        path: '/notebook/notes',
+        name: '我的笔记',
+        component: './notebook/index',
+      },
+      {
+        path: '/notebook/stats',
+        name: '统计',
+        component: './notebook/index',
+      },
+      {
+        path: '/notebook/categories',
+        name: '分类管理',
         component: './notebook/index',
       },
       {
@@ -49,7 +62,7 @@ export default [
   },
   {
     path: '/',
-    redirect: '/notebook/index',
+    redirect: '/notebook/notes',
   },
   {
     path: '*',
