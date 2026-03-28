@@ -14,12 +14,14 @@ import {
   PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
+import { Line, Pie } from '@ant-design/charts';
 import { PageContainer, ProCard, ProColumns, ProTable } from '@ant-design/pro-components';
 import { history, useLocation, useModel } from '@umijs/max';
 import {
   Button,
   Col,
   Drawer,
+  Empty,
   Form,
   Input,
   message,
@@ -41,6 +43,17 @@ type CategoryFormValue = {
   name: string;
 };
 
+type ChartDatum = {
+  type: string;
+  value: number;
+};
+
+type TrendDatum = {
+  date: string;
+  label: string;
+  count: number;
+};
+
 const { Text, Paragraph } = Typography;
 
 const toTimestamp = (value?: string) => {
@@ -53,6 +66,37 @@ const resolveMainView = (pathname: string): MainView => {
   if (pathname === '/notebook/stats') return 'stats';
   if (pathname === '/notebook/categories') return 'categories';
   return 'notes';
+};
+
+const parseDateValue = (value?: string) => {
+  if (!value) return undefined;
+
+  const firstTry = new Date(value);
+  if (!Number.isNaN(firstTry.getTime())) return firstTry;
+
+  const secondTry = new Date(String(value).replace(/-/g, '/'));
+  if (!Number.isNaN(secondTry.getTime())) return secondTry;
+
+  return undefined;
+};
+
+const formatDay = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatDayLabel = (date: Date) => {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${month}-${day}`;
+};
+
+const cardStyle = {
+  borderRadius: 16,
+  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.05)',
+  transition: 'all 0.25s ease',
 };
 
 const NotebookPage: React.FC = () => {
@@ -93,15 +137,81 @@ const NotebookPage: React.FC = () => {
     [notes],
   );
 
+  const uncategorizedNoteCount = useMemo(
+    () => notes.filter((item) => item.categories.length === 0).length,
+    [notes],
+  );
+
+  const topCategory = useMemo(() => {
+    if (!stats.length) return undefined;
+    return [...stats].sort((a, b) => b.noteCount - a.noteCount)[0];
+  }, [stats]);
+
   const statisticsCards = useMemo(
     () => [
-      { key: 'total-notes', title: '笔记总数', value: notes.length },
-      { key: 'total-categories', title: '分类总数', value: categories.length },
-      { key: 'categorized-notes', title: '有分类笔记', value: categorizedNoteCount },
-      { key: 'stats-rows', title: '统计项', value: stats.length },
+      {
+        key: 'total-notes',
+        title: '笔记总数',
+        value: notes.length,
+        subtitle: '全部笔记数量',
+      },
+      {
+        key: 'total-categories',
+        title: '分类总数',
+        value: categories.length,
+        subtitle: topCategory
+          ? `最多分类：${topCategory.categoryName}（${topCategory.noteCount}）`
+          : '暂无分类数据',
+      },
+      {
+        key: 'categorized-notes',
+        title: '有分类笔记',
+        value: categorizedNoteCount,
+        subtitle: `未分类 ${uncategorizedNoteCount} 篇`,
+      },
     ],
-    [categories.length, categorizedNoteCount, notes.length, stats.length],
+    [categories.length, categorizedNoteCount, notes.length, topCategory, uncategorizedNoteCount],
   );
+
+  const categoryPieData = useMemo<ChartDatum[]>(() => {
+    return stats
+      .filter((item) => item.noteCount > 0)
+      .map((item) => ({ type: item.categoryName || '未命名分类', value: item.noteCount }));
+  }, [stats]);
+
+  const noteTrendData = useMemo<TrendDatum[]>(() => {
+    const days = 14;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const trendMap = new Map<string, TrendDatum>();
+
+    for (let i = days - 1; i >= 0; i -= 1) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const full = formatDay(date);
+      trendMap.set(full, {
+        date: full,
+        label: formatDayLabel(date),
+        count: 0,
+      });
+    }
+
+    notes.forEach((note) => {
+      const parsed = parseDateValue(note.createdAt);
+      if (!parsed) return;
+      parsed.setHours(0, 0, 0, 0);
+      const key = formatDay(parsed);
+      const existed = trendMap.get(key);
+      if (!existed) return;
+      trendMap.set(key, {
+        ...existed,
+        count: existed.count + 1,
+      });
+    });
+
+    return Array.from(trendMap.values());
+  }, [notes]);
 
   const recentNotes = useMemo(() => {
     return [...notes]
@@ -112,6 +222,81 @@ const NotebookPage: React.FC = () => {
         title: item.title || '未命名笔记',
       }));
   }, [notes]);
+
+  const pieConfig = useMemo(
+    () => ({
+      data: categoryPieData,
+      angleField: 'value',
+      colorField: 'type',
+      radius: 0.9,
+      innerRadius: 0.64,
+      legend: { position: 'bottom' as const },
+      label: {
+        text: (datum: ChartDatum) => `${datum.value}`,
+        style: {
+          fontSize: 12,
+          fontWeight: 600,
+        },
+      },
+      tooltip: {
+        formatter: (datum: ChartDatum) => ({
+          name: datum.type,
+          value: `${datum.value} 篇`,
+        }),
+      },
+      interaction: {
+        elementHighlight: true,
+      },
+      animation: {
+        enter: {
+          type: 'scaleInY',
+          duration: 650,
+        },
+      },
+    }),
+    [categoryPieData],
+  );
+
+  const lineConfig = useMemo(
+    () => ({
+      data: noteTrendData,
+      xField: 'label',
+      yField: 'count',
+      smooth: true,
+      point: {
+        shapeField: 'circle',
+        sizeField: 3,
+      },
+      area: {
+        style: {
+          fillOpacity: 0.14,
+        },
+      },
+      axis: {
+        x: {
+          labelAutoHide: true,
+          labelAutoRotate: false,
+        },
+        y: {
+          gridLineDash: [3, 3],
+          gridStrokeOpacity: 0.2,
+        },
+      },
+      tooltip: {
+        formatter: (datum: TrendDatum) => ({
+          name: datum.date,
+          value: `${datum.count} 篇`,
+        }),
+      },
+      animation: {
+        enter: {
+          type: 'pathIn',
+          duration: 700,
+        },
+      },
+    }),
+    [noteTrendData],
+  );
 
   useEffect(() => {
     setInitialState((state) => {
@@ -346,10 +531,7 @@ const NotebookPage: React.FC = () => {
     <PageContainer title={false}>
       {mainView === 'notes' ? (
         <>
-          <ProCard
-            bordered
-            style={{ borderRadius: 14, boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)' }}
-          >
+          <ProCard bordered style={cardStyle}>
             <Space direction="vertical" size={4}>
               <Text strong style={{ fontSize: 24, color: token.colorTextHeading }}>
                 我的笔记
@@ -417,39 +599,67 @@ const NotebookPage: React.FC = () => {
 
       {mainView === 'stats' ? (
         <>
-          <ProCard
-            bordered
-            style={{ borderRadius: 14, boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)' }}
-          >
+          <ProCard bordered style={cardStyle}>
             <Space direction="vertical" size={4}>
               <Text strong style={{ fontSize: 24, color: token.colorTextHeading }}>
                 统计
               </Text>
-              <Text type="secondary">查看笔记与分类数据概览，以及分类维度的数量分布。</Text>
+              <Text type="secondary">先看总览，再看分类占比与趋势，最后查看明细表格。</Text>
             </Space>
           </ProCard>
 
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             {statisticsCards.map((item) => (
-              <Col key={item.key} xs={24} sm={12} xl={6}>
-                <ProCard
-                  bordered
-                  style={{ borderRadius: 14, boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)' }}
-                >
-                  <Statistic title={item.title} value={item.value} loading={loading} />
+              <Col key={item.key} xs={24} md={8}>
+                <ProCard bordered style={cardStyle}>
+                  <Space direction="vertical" size={2}>
+                    <Text type="secondary">{item.title}</Text>
+                    <Statistic value={item.value} valueStyle={{ fontWeight: 700, fontSize: 30 }} />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {item.subtitle}
+                    </Text>
+                  </Space>
                 </ProCard>
               </Col>
             ))}
           </Row>
 
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col xs={24} lg={12}>
+              <ProCard title="分类占比" subTitle="各分类笔记占比" bordered style={{ ...cardStyle, height: 420 }}>
+                {categoryPieData.length ? (
+                  <Pie {...pieConfig} style={{ height: 320 }} />
+                ) : (
+                  <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Empty description="暂无分类占比数据" />
+                  </div>
+                )}
+              </ProCard>
+            </Col>
+
+            <Col xs={24} lg={12}>
+              <ProCard
+                title="近 14 天创建趋势"
+                subTitle="按创建日期聚合"
+                bordered
+                style={{ ...cardStyle, height: 420 }}
+              >
+                {notes.length ? (
+                  <Line {...lineConfig} style={{ height: 320 }} />
+                ) : (
+                  <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Empty description="暂无趋势数据" />
+                  </div>
+                )}
+              </ProCard>
+            </Col>
+          </Row>
+
           <ProCard
-            title="分类统计"
+            title="分类统计明细"
+            subTitle="辅助查看具体分类计数"
             bordered
-            style={{
-              marginTop: 16,
-              borderRadius: 14,
-              boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)',
-            }}
+            style={{ ...cardStyle, marginTop: 16 }}
           >
             <Table<API.CategoryStats>
               rowKey={(item) => String(item.categoryId)}
@@ -457,6 +667,7 @@ const NotebookPage: React.FC = () => {
               dataSource={stats}
               loading={loading}
               pagination={false}
+              size="small"
               locale={{ emptyText: '暂无统计数据' }}
             />
           </ProCard>
@@ -465,10 +676,7 @@ const NotebookPage: React.FC = () => {
 
       {mainView === 'categories' ? (
         <>
-          <ProCard
-            bordered
-            style={{ borderRadius: 14, boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)' }}
-          >
+          <ProCard bordered style={cardStyle}>
             <Space direction="vertical" size={4}>
               <Text strong style={{ fontSize: 24, color: token.colorTextHeading }}>
                 分类管理
@@ -477,14 +685,7 @@ const NotebookPage: React.FC = () => {
             </Space>
           </ProCard>
 
-          <ProCard
-            bordered
-            style={{
-              marginTop: 16,
-              borderRadius: 14,
-              boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)',
-            }}
-          >
+          <ProCard bordered style={{ ...cardStyle, marginTop: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
               <Button type="primary" icon={<PlusOutlined />} onClick={openCreateCategory}>
                 新建分类
