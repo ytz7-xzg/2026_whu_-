@@ -78,15 +78,11 @@ const injectNotebookMenu = (menuData: MenuDataItem[], recentNotes: NotebookRecen
 
       return {
         ...child,
+        name: '我的笔记',
         children: [
           {
             path: '/notebook/notes',
             name: '全部笔记',
-          },
-          {
-            path: '/notebook/recent-title',
-            name: '最近笔记',
-            disabled: true,
           },
           ...recentMenus,
         ],
@@ -124,8 +120,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => ({
       colorTextSubMenuSelected: '#ffffff',
     },
   },
-  menuDataRender: (menuData) =>
-    injectNotebookMenu(menuData, initialState?.notebookRecentNotes || []),
+  menuDataRender: (menuData) => injectNotebookMenu(menuData, initialState?.notebookRecentNotes || []),
   rightContentRender: () => <RightContent />,
   waterMarkProps: {
     content: initialState?.currentToken?.userName || initialState?.currentToken?.userCode,

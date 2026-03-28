@@ -39,6 +39,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type MainView = 'notes' | 'stats' | 'categories';
+
 type CategoryFormValue = {
   name: string;
 };
@@ -123,9 +124,7 @@ const NotebookPage: React.FC = () => {
     setMainView(resolveMainView(location.pathname));
   }, [location.pathname]);
 
-  const categoryMap = useMemo(() => {
-    return new Map(categories.map((item) => [String(item.id), item.name]));
-  }, [categories]);
+  const categoryMap = useMemo(() => new Map(categories.map((item) => [String(item.id), item.name])), [categories]);
 
   const categoryOptions = useMemo(
     () => categories.map((item) => ({ label: item.name, value: String(item.id) })),
@@ -153,21 +152,21 @@ const NotebookPage: React.FC = () => {
         key: 'total-notes',
         title: '笔记总数',
         value: notes.length,
-        subtitle: '全部笔记数量',
+        subtitle: '当前已记录的全部笔记',
       },
       {
         key: 'total-categories',
         title: '分类总数',
         value: categories.length,
         subtitle: topCategory
-          ? `最多分类：${topCategory.categoryName}（${topCategory.noteCount}）`
-          : '暂无分类数据',
+          ? `最多分类：${topCategory.categoryName}（${topCategory.noteCount} 篇）`
+          : '暂无分类统计数据',
       },
       {
         key: 'categorized-notes',
         title: '有分类笔记',
         value: categorizedNoteCount,
-        subtitle: `未分类 ${uncategorizedNoteCount} 篇`,
+        subtitle: `未分类：${uncategorizedNoteCount} 篇`,
       },
     ],
     [categories.length, categorizedNoteCount, notes.length, topCategory, uncategorizedNoteCount],
@@ -176,7 +175,10 @@ const NotebookPage: React.FC = () => {
   const categoryPieData = useMemo<ChartDatum[]>(() => {
     return stats
       .filter((item) => item.noteCount > 0)
-      .map((item) => ({ type: item.categoryName || '未命名分类', value: item.noteCount }));
+      .map((item) => ({
+        type: item.categoryName || '未命名分类',
+        value: item.noteCount,
+      }));
   }, [stats]);
 
   const pieTotal = useMemo(
@@ -218,6 +220,29 @@ const NotebookPage: React.FC = () => {
     return Array.from(trendMap.values());
   }, [notes]);
 
+  const trendCompareMap = useMemo(() => {
+    const result = new Map<string, string>();
+
+    noteTrendData.forEach((current, index) => {
+      if (index === 0) {
+        result.set(current.date, '--');
+        return;
+      }
+
+      const previous = noteTrendData[index - 1]?.count ?? 0;
+      if (previous <= 0) {
+        result.set(current.date, current.count > 0 ? '--（昨日 0 篇）' : '0%');
+        return;
+      }
+
+      const ratio = ((current.count - previous) / previous) * 100;
+      const sign = ratio > 0 ? '+' : '';
+      result.set(current.date, `${sign}${ratio.toFixed(1)}%`);
+    });
+
+    return result;
+  }, [noteTrendData]);
+
   const recentNotes = useMemo(() => {
     return [...notes]
       .sort((a, b) => toTimestamp(b.updatedAt) - toTimestamp(a.updatedAt))
@@ -244,13 +269,16 @@ const NotebookPage: React.FC = () => {
         },
       },
       tooltip: {
-        formatter: (datum: ChartDatum) => {
-          const percent = pieTotal ? ((datum.value / pieTotal) * 100).toFixed(1) : '0.0';
-          return {
-            name: `类别：${datum.type}`,
-            value: `笔记占比：${percent}%`,
-          };
-        },
+        title: (datum: ChartDatum) => `类别：${datum.type}`,
+        items: [
+          (datum: ChartDatum) => {
+            const percent = pieTotal ? ((datum.value / pieTotal) * 100).toFixed(1) : '0.0';
+            return {
+              name: '该类别笔记占比',
+              value: `${percent}%（${datum.value} 篇）`,
+            };
+          },
+        ],
       },
       interaction: {
         elementHighlight: true,
@@ -291,10 +319,17 @@ const NotebookPage: React.FC = () => {
         },
       },
       tooltip: {
-        formatter: (datum: TrendDatum) => ({
-          name: datum.date,
-          value: `${datum.count} 篇`,
-        }),
+        title: (datum: TrendDatum) => datum.date,
+        items: [
+          (datum: TrendDatum) => ({
+            name: '当日新增篇数',
+            value: `${datum.count} 篇`,
+          }),
+          (datum: TrendDatum) => ({
+            name: '相比昨日新增百分比',
+            value: trendCompareMap.get(datum.date) || '--',
+          }),
+        ],
       },
       animation: {
         enter: {
@@ -303,7 +338,7 @@ const NotebookPage: React.FC = () => {
         },
       },
     }),
-    [noteTrendData],
+    [noteTrendData, trendCompareMap],
   );
 
   useEffect(() => {
@@ -460,11 +495,7 @@ const NotebookPage: React.FC = () => {
         width: 180,
         render: (_, record) => (
           <Space size="small">
-            <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => history.push(`/notebook/edit/${record.id}`)}
-            >
+            <Button type="link" icon={<EditOutlined />} onClick={() => history.push(`/notebook/edit/${record.id}`)}>
               编辑
             </Button>
             <Popconfirm
@@ -646,12 +677,7 @@ const NotebookPage: React.FC = () => {
             </Col>
 
             <Col xs={24} lg={12}>
-              <ProCard
-                title="近 14 天创建趋势"
-                subTitle="按创建日期聚合"
-                bordered
-                style={{ ...cardStyle, height: 420 }}
-              >
+              <ProCard title="近 14 天创建趋势" subTitle="按创建日期聚合" bordered style={{ ...cardStyle, height: 420 }}>
                 {notes.length ? (
                   <Line {...lineConfig} style={{ height: 320 }} />
                 ) : (
