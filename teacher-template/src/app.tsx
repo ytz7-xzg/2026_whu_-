@@ -1,8 +1,6 @@
 import Footer from '@/components/Footer';
 import RightContent from '@/components/RightContent';
-import { PlusOutlined } from '@ant-design/icons';
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
-import { Button } from 'antd';
 import type { MenuDataItem } from '@umijs/route-utils';
 import type { RunTimeLayoutConfig } from '@umijs/max';
 import { history } from '@umijs/max';
@@ -123,7 +121,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => ({
     },
   },
   menuDataRender: (menuData) => injectNotebookMenu(menuData, initialState?.notebookRecentNotes || []),
-  rightContentRender: () => <RightContent />,
+  rightContentRender: (props) => <RightContent collapsed={props?.collapsed} />,
   waterMarkProps: {
     content: initialState?.currentToken?.userName || initialState?.currentToken?.userCode,
   },
@@ -155,22 +153,6 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => ({
     },
   ],
   menuHeaderRender: undefined,
-  menuFooterRender: (props) => {
-    if (!history.location.pathname.startsWith('/notebook')) return null;
-    return (
-      <div className="notebook-sider-create-wrap">
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          className="notebook-sider-create-button"
-          block
-          onClick={() => history.push('/notebook/create')}
-        >
-          {props?.collapsed ? '' : '新建笔记'}
-        </Button>
-      </div>
-    );
-  },
   childrenRender: (children) => <>{children}</>,
   ...initialState?.settings,
 });
