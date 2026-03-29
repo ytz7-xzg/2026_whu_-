@@ -90,9 +90,8 @@ export async function login(data: API.LoginPayload, options?: Record<string, unk
     userCode: data.userId,
     userName: data.userId,
   });
-  if (normalized) {
-    saveToken(normalized);
-  }
+  if (!normalized?.token) return undefined;
+  saveToken(normalized);
   return normalized;
 }
 

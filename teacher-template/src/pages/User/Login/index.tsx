@@ -169,7 +169,7 @@ const Login: React.FC = () => {
       userId: values.username || '',
       password: values.password || '',
     });
-    if (!result) {
+    if (!result?.token) {
       message.error('登录失败，请检查用户名和密码');
       return;
     }
