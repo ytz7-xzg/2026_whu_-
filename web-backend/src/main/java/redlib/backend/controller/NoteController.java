@@ -2,8 +2,13 @@ package redlib.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import redlib.backend.annotation.BackendModule;
 import redlib.backend.annotation.Privilege;
 import redlib.backend.model.Note;
@@ -13,67 +18,103 @@ import redlib.backend.utils.ThreadContextHolder;
 
 import java.util.List;
 
-/**
- * 笔记管理 Controller
- *
- * 职责：处理当前登录用户的笔记相关 HTTP 请求
- * - 查询笔记列表
- * - 新增笔记
- * - 修改笔记
- * - 删除笔记
- */
 @RestController
 @RequestMapping("/api/note")
-@RequiredArgsConstructor
 @BackendModule({"page:页面"})
-@Tag(name = "笔记管理接口")
+@Tag(name = "笔记接口")
 public class NoteController {
 
-    // 注入笔记业务服务，具体增删改查逻辑交给 Service 层处理。
-    private final NoteService noteService;
+    // 注入笔记服务，负责具体的笔记业务处理。
+    @Autowired
+    private NoteService noteService;
 
+    /**
+     * 构造统一成功响应。
+     *
+     * @param data 业务数据
+     * @return 标准响应体
+     */
     private <T> ResponseData<T> success(T data) {
-        ResponseData<T> response = new ResponseData<>(); // 创建统一响应对象。
-        response.setCode(200); // 设置成功状态码。
-        response.setSuccess(true); // 标记本次请求处理成功。
-        response.setData(data); // 将业务数据放入响应体中。
-        return response; // 返回统一格式的响应结果。
+        // 创建统一响应对象。
+        ResponseData<T> response = new ResponseData<>();
+        // 设置成功状态码。
+        response.setCode(200);
+        // 标记本次请求成功。
+        response.setSuccess(true);
+        // 写入要返回的数据。
+        response.setData(data);
+        // 返回响应对象。
+        return response;
     }
 
+    /**
+     * 获取当前用户的笔记列表。
+     *
+     * @return 笔记列表
+     */
     @GetMapping("/list")
     @Privilege
-    @Operation(summary = "获取当前用户的笔记列表")
+    @Operation(summary = "获取笔记列表")
     public ResponseData<List<Note>> getNoteList() {
-        Long currentUserId = ThreadContextHolder.getToken().getUserId().longValue(); // 从当前登录令牌中取出用户 ID，只查询自己的笔记。
-        List<Note> list = noteService.getNoteList(currentUserId); // 调用业务层查询当前用户的笔记列表。
-        return success(list); // 把查询结果按统一结构返回给前端。
+        // 从当前令牌中获取用户 ID。
+        Long currentUserId = ThreadContextHolder.getToken().getUserId().longValue();
+        // 查询该用户的笔记列表。
+        List<Note> list = noteService.getNoteList(currentUserId);
+        // 返回查询结果。
+        return success(list);
     }
 
-
+    /**
+     * 新增笔记。
+     *
+     * @param note 笔记信息
+     * @return 新增结果
+     */
     @PostMapping("/add")
     @Privilege
-    @Operation(summary = "创建新笔记")
+    @Operation(summary = "新增笔记")
     public ResponseData<String> addNote(@RequestBody Note note) {
-        note.setUserId(ThreadContextHolder.getToken().getUserId().longValue()); // 把新笔记归属到当前登录用户
-        noteService.addNote(note); // 调用业务层执行笔记新增。
-        return success("笔记创建成功"); // 返回创建成功提示。
+        // 将笔记归属到当前登录用户。
+        note.setUserId(ThreadContextHolder.getToken().getUserId().longValue());
+        // 调用服务层完成笔记新增。
+        noteService.addNote(note);
+        // 返回新增成功提示。
+        return success("新增笔记成功");
     }
 
+    /**
+     * 修改笔记。
+     *
+     * @param note 笔记信息
+     * @return 修改结果
+     */
     @PostMapping("/update")
     @Privilege
-    @Operation(summary = "编辑修改笔记")
+    @Operation(summary = "修改笔记")
     public ResponseData<String> updateNote(@RequestBody Note note) {
-        note.setUserId(ThreadContextHolder.getToken().getUserId().longValue()); // 补上当前用户 ID，更新时用于校验这篇笔记是否属于本人。
-        noteService.updateNote(note); // 调用业务层执行笔记更新。
-        return success("笔记更新成功"); // 返回更新成功提示。
+        // 补充当前登录用户 ID，避免修改到他人数据。
+        note.setUserId(ThreadContextHolder.getToken().getUserId().longValue());
+        // 调用服务层执行笔记更新。
+        noteService.updateNote(note);
+        // 返回修改成功提示。
+        return success("修改笔记成功");
     }
 
+    /**
+     * 删除笔记。
+     *
+     * @param id 笔记 ID
+     * @return 删除结果
+     */
     @PostMapping("/delete")
     @Privilege
     @Operation(summary = "删除笔记")
     public ResponseData<String> deleteNote(@RequestParam Long id) {
-        Long currentUserId = ThreadContextHolder.getToken().getUserId().longValue(); // 获取当前用户 ID，删除时要校验笔记归属。
-        noteService.deleteNote(id, currentUserId); // 按“笔记 ID + 当前用户 ID”删除，避免误删他人数据。
-        return success("笔记删除成功"); // 返回删除成功提示。
+        // 获取当前登录用户 ID，用于删除时做归属校验。
+        Long currentUserId = ThreadContextHolder.getToken().getUserId().longValue();
+        // 只删除当前用户自己的笔记。
+        noteService.deleteNote(id, currentUserId);
+        // 返回删除成功提示。
+        return success("删除笔记成功");
     }
 }

@@ -5,8 +5,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import redlib.backend.annotation.BackendModule;
 import redlib.backend.annotation.NeedNoPrivilege;
 import redlib.backend.annotation.Privilege;
@@ -20,74 +24,129 @@ import redlib.backend.utils.ThreadContextHolder;
 @RestController
 @RequestMapping("/api/authentication")
 @BackendModule({"page:页面"})
-@Tag(name = "认证与注册接口")
-@RequiredArgsConstructor
+@Tag(name = "认证接口")
 public class AuthenticationController {
 
-    // 注入令牌服务，负责登录态的签发、校验和注销。
-    private final TokenService tokenService;
-    // 注入用户服务，负责注册和账号密码校验。
-    private final UserService userService;
+    // 注入令牌服务，负责登录态的创建和退出。
+    @Autowired
+    private TokenService tokenService;
 
+    // 注入用户服务，负责注册和账号校验。
+    @Autowired
+    private UserService userService;
+
+    /**
+     * 构造统一成功响应。
+     *
+     * @param data 业务数据
+     * @return 标准响应体
+     */
     private <T> ResponseData<T> success(T data) {
-        ResponseData<T> response = new ResponseData<>(); // 创建统一响应对象。
-        response.setCode(200); // 设置成功状态码。
-        response.setSuccess(true); // 标记本次请求处理成功。
-        response.setData(data); // 把业务结果放入响应体中。
-        return response; // 返回统一格式的响应结果。
+        // 创建统一响应对象。
+        ResponseData<T> response = new ResponseData<>();
+        // 设置成功状态码。
+        response.setCode(200);
+        // 标记本次请求处理成功。
+        response.setSuccess(true);
+        // 写入返回数据。
+        response.setData(data);
+        // 返回封装后的响应体。
+        return response;
     }
 
+    /**
+     * 用户注册接口。
+     *
+     * @param user 前端提交的用户信息
+     * @return 注册结果
+     */
     @PostMapping("/register")
     @NeedNoPrivilege
     @Operation(summary = "用户注册")
     public ResponseData<String> register(@RequestBody User user) {
-        userService.register(user); // 调用用户业务层完成注册，包括参数校验和数据入库。
-        return success("注册成功，快去登录吧！"); // 返回注册成功提示。
+        // 调用用户服务完成注册。
+        userService.register(user);
+        // 返回注册成功提示。
+        return success("注册成功");
     }
 
+    /**
+     * 用户登录接口。
+     *
+     * @param loginUser 前端提交的登录信息
+     * @param request 请求对象
+     * @param response 响应对象
+     * @return 登录后的令牌信息
+     */
     @PostMapping("/login")
     @NeedNoPrivilege
     @Operation(summary = "用户登录")
-    public ResponseData<Token> login(@RequestBody User loginUser, HttpServletRequest request, HttpServletResponse response) {
-        User realUser = userService.login(loginUser.getUsername(), loginUser.getPassword()); // 先校验用户名和密码，拿到数据库中的真实用户信息。
-
-        String ipAddress = request.getRemoteAddr(); // 获取本次登录请求的来源 IP。
-        ipAddress = ipAddress.replace("[", "").replace("]", ""); // 兼容部分环境下 IPv6 地址外层中括号格式。
+    public ResponseData<Token> login(
+            @RequestBody User loginUser,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        // 校验用户名和密码，获取真实用户信息。
+        User realUser = userService.login(loginUser.getUsername(), loginUser.getPassword());
+        // 获取当前请求的来源 IP。
+        String ipAddress = request.getRemoteAddr();
+        // 去掉 IPv6 地址可能带上的中括号。
+        ipAddress = ipAddress.replace("[", "").replace("]", "");
+        // 创建新的登录令牌并记录登录环境信息。
         Token token = tokenService.login(
-                String.valueOf(realUser.getId()), // 使用真实用户 ID 生成登录态。
-                loginUser.getPassword(), // 传入本次登录密码，供令牌服务做必要处理。
-                ipAddress, // 记录本次登录 IP，便于安全审计。
-                request.getHeader("user-agent") // 记录客户端设备信息。
+                String.valueOf(realUser.getId()),
+                loginUser.getPassword(),
+                ipAddress,
+                request.getHeader("user-agent")
         );
 
-        Cookie cookie = new Cookie("accessToken", token.getAccessToken()); // 把 accessToken 写入 Cookie，方便浏览器后续自动携带。
-        cookie.setPath("/"); // 设置 Cookie 生效路径为全站。
-        cookie.setHttpOnly(true); // 禁止前端 JS 直接读取，降低被脚本窃取的风险。
-        response.addCookie(cookie); // 把 Cookie 添加到响应头返回给浏览器。
-
-        return success(token); // 把登录成功后的 Token 信息返回给前端。
+        // 将 accessToken 写入 Cookie，便于浏览器后续自动携带。
+        Cookie cookie = new Cookie("accessToken", token.getAccessToken());
+        // 让 Cookie 对整个站点生效。
+        cookie.setPath("/");
+        // 禁止前端脚本直接读取 Cookie。
+        cookie.setHttpOnly(true);
+        // 将 Cookie 添加到响应头。
+        response.addCookie(cookie);
+        // 返回登录成功后的令牌信息。
+        return success(token);
     }
 
+    /**
+     * 获取当前登录用户信息。
+     *
+     * @return 当前线程上下文中的令牌信息
+     */
     @GetMapping("/getCurrentUser")
     @Privilege
-    @Operation(summary = "获取当前登录用户信息")
+    @Operation(summary = "获取当前用户")
     public ResponseData<Token> getCurrentUser() {
-        return success(ThreadContextHolder.getToken()); // 从线程上下文中直接取出当前登录用户对应的 Token 信息并返回。
+        // 直接从线程上下文中取出当前用户的令牌信息。
+        return success(ThreadContextHolder.getToken());
     }
 
+    /**
+     * 退出登录接口。
+     *
+     * @return 退出结果
+     */
     @GetMapping("/logout")
     @Privilege
     @Operation(summary = "退出登录")
     public ResponseData<String> logout() {
-        Token token = null; // 先定义 token 变量，兼容未取到登录态的情况。
+        // 先声明 token，兼容未登录或上下文缺失的情况。
+        Token token = null;
         try {
-            token = ThreadContextHolder.getToken(); // 尝试从当前线程上下文中获取登录 Token。
+            // 尝试获取当前登录令牌。
+            token = ThreadContextHolder.getToken();
         } catch (Exception ignore) {
-            // 如果当前没有可用登录态，忽略异常，继续走统一退出响应。
+            // 没有取到令牌时忽略异常，仍然返回统一结果。
         }
         if (token != null) {
-            tokenService.logout(token.getAccessToken()); // 如果存在有效 Token，就调用业务层注销当前登录态。
+            // 如果存在有效令牌，则执行退出登录。
+            tokenService.logout(token.getAccessToken());
         }
-        return success("退出成功"); // 返回退出成功提示。
+        // 返回退出成功提示。
+        return success("退出成功");
     }
 }
