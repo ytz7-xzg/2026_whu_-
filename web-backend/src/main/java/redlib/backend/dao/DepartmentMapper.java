@@ -7,44 +7,48 @@ import redlib.backend.model.Department;
 import java.util.List;
 
 /**
- * 部门数据访问组件
+ * 部门数据访问接口。
  *
- * @author 李洪文
- * @date 2019/11/14 10:38
+ * <p>负责部门信息的增删改查、分页检索以及按条件批量查询。</p>
  */
 public interface DepartmentMapper {
+    /**
+     * 按主键查询部门。
+     *
+     * @param id 部门主键
+     * @return 部门信息，不存在时返回 {@code null}
+     */
     Department selectByPrimaryKey(Integer id);
 
     /**
-     * 新增记录
+     * 新增部门记录。
      *
-     * @param record
-     * @return
+     * @param record 部门实体
+     * @return 受影响行数
      */
     int insert(Department record);
 
     /**
-     * 根据主键更新记录
+     * 按主键更新部门记录。
      *
-     * @param record
-     * @return
+     * @param record 部门实体
+     * @return 受影响行数
      */
     int updateByPrimaryKey(Department record);
 
     /**
-     * 根据部门编码获取部门信息详情
+     * 按部门编码和租户编码查询部门详情。
      *
      * @param departmentCode 部门编码
-     * @param tenantCode     租户代码
-     * @return 门信息详情
+     * @param tenantCode 租户编码
+     * @return 部门信息，不存在时返回 {@code null}
      */
     Department getByCode(
             @Param("departmentCode") String departmentCode,
             @Param("tenantCode") String tenantCode);
 
-
     /**
-     * 根据查询条件获取命中个数
+     * 按查询条件统计部门数量。
      *
      * @param queryDTO 查询条件
      * @return 命中数量
@@ -52,28 +56,30 @@ public interface DepartmentMapper {
     Integer count(DepartmentQueryDTO queryDTO);
 
     /**
-     * 根据查询条件获取部门列表
+     * 按查询条件分页获取部门列表。
      *
      * @param queryDTO 查询条件
-     * @param offset   开始位置
-     * @param limit    记录数量
+     * @param offset 起始偏移量
+     * @param limit 返回记录数
      * @return 部门列表
      */
-    List<Department> list(@Param("queryDTO") DepartmentQueryDTO queryDTO, @Param("offset") Integer offset, @Param("limit") Integer limit
-    );
+    List<Department> list(
+            @Param("queryDTO") DepartmentQueryDTO queryDTO,
+            @Param("offset") Integer offset,
+            @Param("limit") Integer limit);
 
     /**
-     * 根据代码列表批量删除部门
+     * 按部门主键列表批量删除部门。
      *
-     * @param codeList id列表
+     * @param codeList 部门 ID 列表
      */
     void deleteByCodes(@Param("codeList") List<Integer> codeList);
 
     /**
-     * 根据部门代码列表获取部门信息列表
+     * 按部门编码列表查询部门信息。
      *
-     * @param codeList   部门代码列表
-     * @param tenantCode 租户代码
+     * @param codeList 部门编码列表
+     * @param tenantCode 租户编码
      * @return 部门列表
      */
     List<Department> listByCodes(
@@ -81,10 +87,10 @@ public interface DepartmentMapper {
             @Param("tenantCode") String tenantCode);
 
     /**
-     * 根据部门名称查询部门列表
+     * 按部门名称模糊查询部门列表。
      *
-     * @param departmentName 部门名称，模糊匹配
-     * @param tenantCode     租户代码
+     * @param departmentName 部门名称，支持模糊匹配
+     * @param tenantCode 租户编码
      * @return 部门列表
      */
     List<Department> listByName(

@@ -4,15 +4,33 @@ import lombok.Data;
 import java.util.Date;
 
 /**
- * 分类实体类 (对应数据库的 category 表)
+ * 分类实体类 (对应数据库 category 表)
  */
-@Data // 这就是你图片里提到的神器！有了它，你就不需要手写 get/set 方法了，Lombok 会在后台自动帮你生成
+@Data
 public class Category {
 
-    private Long id;           // 对应表里的 bigint
-    private String name;       // 对应表里的 varchar
-    private Long userId;       // 创建该分类的用户ID
-    private Date createTime;   // 创建时间
-    private Date updateTime;   // 更新时间
+    /**
+     * 分类主键ID
+     */
+    private Long id;
 
+    /**
+     * 分类名称
+     */
+    private String name;
+
+    /**
+     * 归属用户ID
+     */
+    private Long userId;
+
+    /**
+     * 创建时间
+     */
+    private Date createTime;
+
+    /**
+     * 最后更新时间
+     */
+    private Date updateTime;
 }

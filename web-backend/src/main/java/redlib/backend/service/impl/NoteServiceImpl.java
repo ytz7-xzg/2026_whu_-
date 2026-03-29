@@ -63,10 +63,10 @@ public class NoteServiceImpl implements NoteService {
         Assert.hasText(normalizedTitle, "笔记标题不能为空");
         note.setTitle(normalizedTitle);
 
-        // 正文允许为空，但不允许是 null，避免后续持久化和前端展示时出问题
-        if (note.getContent() == null) {
-            note.setContent("");
-        }
+//        // 正文允许为空，但不允许是 null，避免后续持久化和前端展示时出问题
+//        if (note.getContent() == null) {
+//            note.setContent("");
+//        }
     }
 
     /**
